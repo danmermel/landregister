@@ -4,7 +4,7 @@ contract deed {
   address public nextDeed;
   address public owner;
   address public registry;
-  boolean public live;
+  bool public live;
   
   function deed (address _previousDeed, address _owner) {
     previousDeed = _previousDeed;
