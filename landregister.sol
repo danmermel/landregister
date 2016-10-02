@@ -8,6 +8,9 @@ contract deed {
   uint public numNextDeeds;
   string public url_to_claim;
   string public claim_hash;
+  uint public live_time;
+  uint public provisional_time;
+  uint public dead_time;
   enum  deed_status { provisional, live, dead }
   
   function deed (address _previousDeed, address _owner) {
@@ -15,6 +18,9 @@ contract deed {
     owner = _owner;
     registry = msg.sender;
     status = deed_status.provisional;
+    provisional_time = now;
+    live_time = 0 ;
+    dead_time = 0;
     numNextDeeds = 0;
     url_to_claim ='';
     claim_hash='';
@@ -29,6 +35,7 @@ contract deed {
   function commit (){
     if (status != deed_status.provisional) throw;
     status = deed_status.live;
+    live_time = now; 
   }
 
   function transferSingle(address _newDeed) {
@@ -50,6 +57,7 @@ contract deed {
     if (msg.sender != registry) throw;
     if (numNextDeeds == 0) throw;
     status = deed_status.dead;
+    dead_time = now;
   }
 }
 
@@ -82,14 +90,19 @@ contract landregister {
     existing_deed.expire();
   }
 
-  function split(address _existing_deedid, uint _parts) {
+  function split(address _existing_deedid, address _owner1, address _owner2, string _url1, string _url2, string _hash1, string _hash2) {
     deed existing_deed = deed(_existing_deedid);
     if (existing_deed.owner() != msg.sender) throw;
-    for(var i = 0; i < _parts; i++) {
-      var newdeed = new deed(_existing_deedid, existing_deed.owner());
-      theRegister[deedCount++] = newdeed;
-      existing_deed.addChild(newdeed);
-    }
+    var newdeed1 = new deed(_existing_deedid, _owner1);
+    var newdeed2 = new deed(_existing_deedid, _owner2);
+    newdeed1.configure_deed(_url1, _hash1);
+    newdeed2.configure_deed(_url2, _hash2);
+    newdeed1.commit();
+    newdeed2.commit();
+    theRegister[deedCount++] = newdeed1;
+    theRegister[deedCount++] = newdeed2;
+    existing_deed.addChild(newdeed1);
+    existing_deed.addChild(newdeed2);
     existing_deed.expire();
   }
 }
