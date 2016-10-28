@@ -1,20 +1,22 @@
 contract deed {
  
-  address public previousDeed;
+  mapping (uint => address) public previousDeeds;
   mapping (uint => address) public nextDeeds;
   address public owner;
   address public registry;
   deed_status public status;
   uint public numNextDeeds;
-  string public url_to_claim;
-  string public claim_hash;
+  uint public numPreviousDeeds;
+  bytes32 public url_to_claim;
+  bytes32 public claim_hash;
   uint public live_time;
   uint public provisional_time;
   uint public dead_time;
   enum  deed_status { provisional, live, dead }
   
   function deed (address _previousDeed, address _owner) {
-    previousDeed = _previousDeed;
+    previousDeeds[0] = _previousDeed;
+    numPreviousDeeds = 1;
     owner = _owner;
     registry = msg.sender;
     status = deed_status.provisional;
@@ -22,11 +24,18 @@ contract deed {
     live_time = 0 ;
     dead_time = 0;
     numNextDeeds = 0;
-    url_to_claim ='';
-    claim_hash='';
+    url_to_claim = '';
+    claim_hash = '';
   }
 
-  function configure_deed (string _url, string _hash) {
+  function addParent(address _parent) {
+    if (status != deed_status.provisional) throw;
+    if (msg.sender != registry) throw;
+    previousDeeds[numPreviousDeeds] = _parent;
+    numPreviousDeeds++;
+  }
+
+  function configure_deed (bytes32 _url, bytes32 _hash) {
     if (status != deed_status.provisional) throw;
     url_to_claim = _url;
     claim_hash = _hash; 
@@ -70,7 +79,7 @@ contract landregister {
     deedCount=0;
   }
 
-  function createDeed(string  _url, string  _hash) {
+  function createDeed(bytes32 _url, bytes32 _hash) {
     var d = new deed(0x0, msg.sender);
     theRegister[deedCount++] = d;
     deed newdeed = deed(d);
@@ -84,17 +93,17 @@ contract landregister {
     var newdeed_address = new deed(_existing_deedid, _newowner);
     theRegister[deedCount++] = newdeed_address;
     deed newdeed = deed(newdeed_address);
-    newdeed.configure_deed('scoot.co.uk', 'abc12345fgfr4567');
+    newdeed.configure_deed(existing_deed.url_to_claim(), existing_deed.claim_hash());
     newdeed.commit();
     existing_deed.transferSingle(newdeed_address);  
     existing_deed.expire();
   }
 
-  function split(address _existing_deedid, address _owner1, address _owner2, string _url1, string _url2, string _hash1, string _hash2) {
+  function split(address _existing_deedid, bytes32 _url1, bytes32 _url2, bytes32 _hash1, bytes32 _hash2) {
     deed existing_deed = deed(_existing_deedid);
     if (existing_deed.owner() != msg.sender) throw;
-    var newdeed1 = new deed(_existing_deedid, _owner1);
-    var newdeed2 = new deed(_existing_deedid, _owner2);
+    var newdeed1 = new deed(_existing_deedid, msg.sender);
+    var newdeed2 = new deed(_existing_deedid, msg.sender);
     newdeed1.configure_deed(_url1, _hash1);
     newdeed2.configure_deed(_url2, _hash2);
     newdeed1.commit();
@@ -105,4 +114,21 @@ contract landregister {
     existing_deed.addChild(newdeed2);
     existing_deed.expire();
   }
+  
+  function join(address _existing_deedid1, address _existing_deedid2, bytes32 _url, bytes32 _hash) {
+    deed existing_deed1 = deed(_existing_deedid1);
+    if (existing_deed1.owner() != msg.sender) throw;
+    deed existing_deed2 = deed(_existing_deedid2);
+    if (existing_deed2.owner() != msg.sender) throw;
+    var newdeed = new deed(_existing_deedid1, msg.sender);
+    newdeed.addParent(_existing_deedid2);
+    newdeed.configure_deed(_url, _hash);
+    existing_deed1.addChild(newdeed);
+    existing_deed2.addChild(newdeed);
+    theRegister[deedCount++] = newdeed;
+    newdeed.commit();
+    existing_deed1.expire();
+    existing_deed2.expire();  
+  }
+
 }
