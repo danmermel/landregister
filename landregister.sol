@@ -12,12 +12,14 @@ contract deed {
   uint public live_time;
   uint public provisional_time;
   uint public dead_time;
+  bytes32 public deed_name;
   enum  deed_status { provisional, live, dead }
   
-  function deed (address _previousDeed, address _owner) {
+  function deed (address _previousDeed, address _owner, bytes32 _deed_name) {
     previousDeeds[0] = _previousDeed;
     numPreviousDeeds = 1;
     owner = _owner;
+    deed_name = _deed_name;
     registry = msg.sender;
     status = deed_status.provisional;
     provisional_time = now;
@@ -79,8 +81,8 @@ contract landregister {
     deedCount=0;
   }
 
-  function createDeed(bytes32 _url, bytes32 _hash) {
-    var d = new deed(0x0, msg.sender);
+  function createDeed(bytes32 _url, bytes32 _hash, bytes32 _deed_name) {
+    var d = new deed(0x0, msg.sender, _deed_name);
     theRegister[deedCount++] = d;
     deed newdeed = deed(d);
     newdeed.configure_deed (_url, _hash);
@@ -90,7 +92,7 @@ contract landregister {
   function transferSingle(address _existing_deedid, address _newowner) {
     deed existing_deed = deed(_existing_deedid);
     if (existing_deed.owner() != msg.sender) throw;
-    var newdeed_address = new deed(_existing_deedid, _newowner);
+    var newdeed_address = new deed(_existing_deedid, _newowner, existing_deed.deed_name());
     theRegister[deedCount++] = newdeed_address;
     deed newdeed = deed(newdeed_address);
     newdeed.configure_deed(existing_deed.url_to_claim(), existing_deed.claim_hash());
@@ -99,11 +101,11 @@ contract landregister {
     existing_deed.expire();
   }
 
-  function split(address _existing_deedid, bytes32 _url1, bytes32 _url2, bytes32 _hash1, bytes32 _hash2) {
+  function split(address _existing_deedid, bytes32 _url1, bytes32 _url2, bytes32 _hash1, bytes32 _hash2, bytes32 _deed_name1, bytes32 _deed_name2) {
     deed existing_deed = deed(_existing_deedid);
     if (existing_deed.owner() != msg.sender) throw;
-    var newdeed1 = new deed(_existing_deedid, msg.sender);
-    var newdeed2 = new deed(_existing_deedid, msg.sender);
+    var newdeed1 = new deed(_existing_deedid, msg.sender, _deed_name1);
+    var newdeed2 = new deed(_existing_deedid, msg.sender, _deed_name2);
     newdeed1.configure_deed(_url1, _hash1);
     newdeed2.configure_deed(_url2, _hash2);
     newdeed1.commit();
@@ -115,12 +117,12 @@ contract landregister {
     existing_deed.expire();
   }
   
-  function join(address _existing_deedid1, address _existing_deedid2, bytes32 _url, bytes32 _hash) {
+  function join(address _existing_deedid1, address _existing_deedid2, bytes32 _url, bytes32 _hash, bytes32 _deed_name) {
     deed existing_deed1 = deed(_existing_deedid1);
     if (existing_deed1.owner() != msg.sender) throw;
     deed existing_deed2 = deed(_existing_deedid2);
     if (existing_deed2.owner() != msg.sender) throw;
-    var newdeed = new deed(_existing_deedid1, msg.sender);
+    var newdeed = new deed(_existing_deedid1, msg.sender, _deed_name);
     newdeed.addParent(_existing_deedid2);
     newdeed.configure_deed(_url, _hash);
     existing_deed1.addChild(newdeed);
