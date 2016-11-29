@@ -80,6 +80,11 @@ contract landregister {
   function landregister () {
     deedCount=0;
   }
+   
+  event Log_CreateDeed(address _deedid);
+  event Log_TransferSingle(address _deedid);
+  event Log_Split(address _deedid1, address _deedid2);
+  event Log_Join(address _deedid);
 
   function createDeed(bytes32 _url, bytes32 _hash, bytes32 _deed_name) {
     var d = new deed(0x0, msg.sender, _deed_name);
@@ -87,6 +92,7 @@ contract landregister {
     deed newdeed = deed(d);
     newdeed.configure_deed (_url, _hash);
     newdeed.commit();
+    Log_CreateDeed(d);
   }
 
   function transferSingle(address _existing_deedid, address _newowner) {
@@ -99,6 +105,7 @@ contract landregister {
     newdeed.commit();
     existing_deed.transferSingle(newdeed_address);  
     existing_deed.expire();
+    Log_TransferSingle(newdeed_address);
   }
 
   function split(address _existing_deedid, bytes32 _url1, bytes32 _url2, bytes32 _hash1, bytes32 _hash2, bytes32 _deed_name1, bytes32 _deed_name2) {
@@ -115,6 +122,7 @@ contract landregister {
     existing_deed.addChild(newdeed1);
     existing_deed.addChild(newdeed2);
     existing_deed.expire();
+    Log_Split(newdeed1, newdeed2);
   }
   
   function join(address _existing_deedid1, address _existing_deedid2, bytes32 _url, bytes32 _hash, bytes32 _deed_name) {
@@ -131,6 +139,7 @@ contract landregister {
     newdeed.commit();
     existing_deed1.expire();
     existing_deed2.expire();  
+    Log_Join(newdeed);
   }
 
 }
